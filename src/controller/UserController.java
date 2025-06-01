@@ -8,7 +8,7 @@ import java.rmi.registry.Registry;
 import java.util.List;
 
 /**
- * Controller for user-related operations using RMI.
+ * Enhanced controller for user-related operations using RMI with OTP support.
  */
 public class UserController {
     private UserService userService;
@@ -36,7 +36,7 @@ public class UserController {
     }
     
     /**
-     * Authenticate a user
+     * Authenticate a user using traditional username/password method
      * 
      * @param username The username
      * @param password The password
@@ -48,6 +48,67 @@ public class UserController {
         } catch (Exception ex) {
             ex.printStackTrace();
             return null;
+        }
+    }
+    
+    /**
+     * Initiates OTP-based authentication by sending OTP to user's email
+     * 
+     * @param email The user's email address
+     * @return true if OTP sent successfully, false otherwise
+     */
+    public boolean initiateOTPLogin(String email) {
+        try {
+            return userService.initiateOTPLogin(email);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return false;
+        }
+    }
+    
+    /**
+     * Verifies OTP and completes authentication
+     * 
+     * @param email The user's email address
+     * @param otpCode The OTP code provided by user
+     * @return User object if OTP verification successful, null otherwise
+     */
+    public User authenticateWithOTP(String email, String otpCode) {
+        try {
+            return userService.authenticateWithOTP(email, otpCode);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return null;
+        }
+    }
+    
+    /**
+     * Checks if user can request a new OTP (rate limiting)
+     * 
+     * @param email The user's email address
+     * @return true if user can request new OTP, false otherwise
+     */
+    public boolean canRequestNewOTP(String email) {
+        try {
+            return userService.canRequestNewOTP(email);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return false;
+        }
+    }
+    
+    /**
+     * Gets remaining time before user can request new OTP
+     * 
+     * @param email The user's email address
+     * @return Remaining seconds before new OTP can be requested
+     */
+    public long getRemainingCooldownSeconds(String email) {
+        try {
+            return userService.getRemainingCooldownSeconds(email);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return 0;
         }
     }
     

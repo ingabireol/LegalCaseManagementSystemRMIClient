@@ -10,15 +10,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Vector;
 import view.util.UIConstants;
+import view.util.TableExporter;
 
 /**
- * Enhanced JTable with sorting, filtering, and styling capabilities.
+ * Enhanced JTable with sorting, filtering, styling, and export capabilities.
  */
 public class CustomTable extends JPanel {
     private JTable table;
     private DefaultTableModel tableModel;
     private TableRowSorter<TableModel> rowSorter;
     private List<RowFilter<Object, Object>> filters;
+    private JButton exportButton;
     
     /**
      * Constructor with column names
@@ -26,6 +28,16 @@ public class CustomTable extends JPanel {
      * @param columnNames Array of column names
      */
     public CustomTable(String[] columnNames) {
+        this(columnNames, true); // Show export button by default
+    }
+    
+    /**
+     * Constructor with column names and export button option
+     * 
+     * @param columnNames Array of column names
+     * @param showExportButton Whether to show the export button
+     */
+    public CustomTable(String[] columnNames, boolean showExportButton) {
         filters = new ArrayList<>();
         
         // Create table model
@@ -36,13 +48,15 @@ public class CustomTable extends JPanel {
             }
         };
         
-        initializeUI();
+        initializeUI(showExportButton);
     }
     
     /**
      * Initialize UI components
+     * 
+     * @param showExportButton Whether to show the export button
      */
-    private void initializeUI() {
+    private void initializeUI(boolean showExportButton) {
         setLayout(new BorderLayout());
         
         // Create table
@@ -88,7 +102,197 @@ public class CustomTable extends JPanel {
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         
         add(scrollPane, BorderLayout.CENTER);
+        
+        // Add export button panel if requested
+        if (showExportButton) {
+            JPanel exportPanel = createExportPanel();
+            add(exportPanel, BorderLayout.SOUTH);
+        }
     }
+    
+    /**
+     * Create the export button panel
+     * 
+     * @return The export panel
+     */
+    private JPanel createExportPanel() {
+        JPanel exportPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        exportPanel.setBackground(Color.WHITE);
+        exportPanel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(230, 230, 230)),
+            BorderFactory.createEmptyBorder(5, 10, 5, 10)
+        ));
+        
+        exportButton = new JButton("Export Data");
+        exportButton.setFont(UIConstants.NORMAL_FONT);
+        exportButton.setToolTipText("Export table data to CSV, Excel, or other formats");
+        exportButton.addActionListener(e -> exportData());
+        
+        // Add export icon if available (you can customize this)
+        try {
+            // Simple text-based icon
+            exportButton.setText("📊 Export Data");
+        } catch (Exception e) {
+            // Fallback to text only
+            exportButton.setText("Export Data");
+        }
+        
+        exportPanel.add(exportButton);
+        
+        return exportPanel;
+    }
+    
+    /**
+     * Export the current table data
+     */
+    public void exportData() {
+        exportData("table_data");
+    }
+    
+    /**
+     * Export the current table data with a specific filename prefix
+     * 
+     * @param fileNamePrefix The prefix for the exported filename
+     */
+    public void exportData(String fileNamePrefix) {
+        if (tableModel.getRowCount() == 0) {
+            JOptionPane.showMessageDialog(
+                this,
+                "No data to export. The table is empty.",
+                "Export Warning",
+                JOptionPane.WARNING_MESSAGE
+            );
+            return;
+        }
+        
+        // Create a table model that reflects the current view (including sorting and filtering)
+        TableModel exportModel = createExportTableModel();
+        
+        boolean success = TableExporter.exportTableData(
+            this, 
+            exportModel, 
+            TableExporter.generateDefaultFileName(fileNamePrefix)
+        );
+        
+        if (success) {
+            JOptionPane.showMessageDialog(
+                this,
+                "Data exported successfully!",
+                "Export Complete",
+                JOptionPane.INFORMATION_MESSAGE
+            );
+        }
+    }
+    
+    /**
+     * Create a table model for export that reflects current sorting and filtering
+     * 
+     * @return TableModel for export
+     */
+    private TableModel createExportTableModel() {
+        // Get the current view row count (after filtering)
+        int viewRowCount = table.getRowCount();
+        int columnCount = table.getColumnCount();
+        
+        // Create data array for export
+        Object[][] exportData = new Object[viewRowCount][columnCount];
+        String[] columnNames = new String[columnCount];
+        
+        // Get column names
+        for (int col = 0; col < columnCount; col++) {
+            columnNames[col] = table.getColumnName(col);
+        }
+        
+        // Get data (respecting current sorting and filtering)
+        for (int viewRow = 0; viewRow < viewRowCount; viewRow++) {
+            for (int col = 0; col < columnCount; col++) {
+                exportData[viewRow][col] = table.getValueAt(viewRow, col);
+            }
+        }
+        
+        // Create and return the export table model
+        return new DefaultTableModel(exportData, columnNames) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+    }
+    
+    /**
+     * Quick export to CSV format
+     */
+    public void quickExportToCSV() {
+        quickExportToCSV("table_data");
+    }
+    
+    /**
+     * Quick export to CSV format with specific filename
+     * 
+     * @param fileNamePrefix The prefix for the exported filename
+     */
+    public void quickExportToCSV(String fileNamePrefix) {
+        if (tableModel.getRowCount() == 0) {
+            JOptionPane.showMessageDialog(
+                this,
+                "No data to export. The table is empty.",
+                "Export Warning",
+                JOptionPane.WARNING_MESSAGE
+            );
+            return;
+        }
+        
+        TableModel exportModel = createExportTableModel();
+        boolean success = TableExporter.quickExportToCSV(
+            this, 
+            exportModel, 
+            TableExporter.generateDefaultFileName(fileNamePrefix)
+        );
+        
+        if (success) {
+            JOptionPane.showMessageDialog(
+                this,
+                "Data exported to CSV successfully!",
+                "Export Complete",
+                JOptionPane.INFORMATION_MESSAGE
+            );
+        }
+    }
+    
+    /**
+     * Set the visibility of the export button
+     * 
+     * @param visible Whether the export button should be visible
+     */
+    public void setExportButtonVisible(boolean visible) {
+        if (exportButton != null) {
+            exportButton.getParent().setVisible(visible);
+        }
+    }
+    
+    /**
+     * Set the text for the export button
+     * 
+     * @param text The button text
+     */
+    public void setExportButtonText(String text) {
+        if (exportButton != null) {
+            exportButton.setText(text);
+        }
+    }
+    
+    /**
+     * Add a custom action listener to the export button
+     * 
+     * @param listener The action listener to add
+     */
+    public void addExportButtonActionListener(ActionListener listener) {
+        if (exportButton != null) {
+            exportButton.addActionListener(listener);
+        }
+    }
+    
+    // [Keep all existing methods from the original CustomTable class]
     
     /**
      * Add a row of data to the table
